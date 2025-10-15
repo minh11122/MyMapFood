@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = 'http://localhost:9999/api'; 
+const baseURL = 'https://backmymapfood.onrender.com/'; 
 
 const api = axios.create({
   baseURL: baseURL,
