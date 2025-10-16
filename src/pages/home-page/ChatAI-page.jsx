@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 // 🔑 Dùng OpenRouter (https://openrouter.ai)
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
 
 export const ChatAI = () => {
   const [open, setOpen] = useState(false);
