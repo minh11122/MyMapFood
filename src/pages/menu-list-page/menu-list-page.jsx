@@ -117,7 +117,7 @@ export const MenuListPage = () => {
         {filteredItems.map((item) => (
           <Card
             key={item.id}
-            onClick={() => navigate(`/detail/${item.id}`)}
+            onClick={() => navigate(`/shops/${item.id}`)}
             className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="relative">
