@@ -1,12 +1,12 @@
 import api from "../lib/axios";
 
-// Lấy danh sách tài khoản (có phân trang, filter)
+// Lấy danh sách tài khoản (phân trang + filter)
 export const listAccounts = (params) => {
-  // params = { search, role, status, page }
-  return api.get("/admin/accounts", { params });
+  // params có thể chứa: { search, role, status, page }
+  return api.get("/admin/listAccount", { params });
 };
 
-// Cập nhật trạng thái tài khoản
-export const updateAccountStatus = (accountId) => {
-  return api.patch(`/admin/accounts/${accountId}`);
+export const updateAccountAndUser = (accountId, data) => {
+  // data = { full_name: "Tên mới", status: "ACTIVE" }
+  return api.put(`/admin/updateAccount/${accountId}`, data);
 };

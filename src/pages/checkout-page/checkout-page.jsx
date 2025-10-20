@@ -61,6 +61,7 @@ export const CheckOutPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [showLocationErrorDialog, setShowLocationErrorDialog] = useState(false);
   const [locationErrorMessage, setLocationErrorMessage] = useState("");
+  const [note, setNote] = useState("");
 
   const location = useLocation();
   const { shop, totalPrice, finalTotal } = location.state || {};
@@ -85,14 +86,17 @@ export const CheckOutPage = () => {
         customer: user._id,
         shop: shop._id,
         deliveryAddress,
-        cartItems: cartData.map((c) => c.foodId), // backend nhận id cartItem
+        cartItems: cartData.map((c) => c.foodId),
         voucher: selectedVoucher?._id || null,
         discountAmount: voucherDiscount,
         subtotal,
         shippingFee,
         totalAmount: total,
         paymentMethod: selectedPayment === "cash" ? "COD" : selectedPayment,
-        note: "", // nếu muốn, bạn có thể lấy từ input ghi chú
+        note,
+        receiverName: recipientName,
+        receiverPhone: phone,
+        receiverEmail: email,
       };
 
       const res = await createOrder(orderPayload);
@@ -135,7 +139,7 @@ export const CheckOutPage = () => {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const shippingFee = 76000;
+  const shippingFee = 5000;
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -359,6 +363,8 @@ export const CheckOutPage = () => {
                     </Label>
                     <Input
                       type="text"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
                       placeholder="Vd: Bác tài vui lòng gọi trước khi đến giao"
                       className="w-full px-4 py-3 border-orange-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 placeholder:text-gray-400"
                     />
@@ -399,8 +405,8 @@ export const CheckOutPage = () => {
                       className="flex items-center gap-4 py-4 border-b border-orange-100 last:border-0"
                     >
                       <img
-                        src={item.img}
-                        alt={item.name}
+                        src={item.food?.image_url || "/placeholder.svg"}
+                        alt={item.food?.name || "Món ăn"}
                         className="w-16 h-16 rounded-lg object-cover"
                       />
                       <div className="flex-1">
@@ -412,7 +418,7 @@ export const CheckOutPage = () => {
                                 size="sm"
                                 onClick={() =>
                                   handleQuantityChange(
-                                    item._id || item.id,
+                                    item._id,
                                     item.quantity - 1
                                   )
                                 }
@@ -428,7 +434,7 @@ export const CheckOutPage = () => {
                                 size="sm"
                                 onClick={() =>
                                   handleQuantityChange(
-                                    item._id || item.id,
+                                    item._id,
                                     item.quantity + 1
                                   )
                                 }
@@ -437,15 +443,13 @@ export const CheckOutPage = () => {
                               </Button>
                             </div>
                             <span className="text-sm font-semibold text-gray-900">
-                              {item.name}
+                              {item.food?.name || "Không có tên"}
                             </span>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              handleRemoveItem(item._id || item.id)
-                            }
+                            onClick={() => handleRemoveItem(item._id)}
                             className="text-gray-400 hover:text-red-500 p-0 h-auto"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -458,7 +462,7 @@ export const CheckOutPage = () => {
                           Chỉnh sửa món
                         </Button>
                         <div className="mt-2 text-sm font-semibold text-gray-900">
-                          {(item.price * item.quantity).toLocaleString()}đ
+                          {(item.food?.price * item.quantity).toLocaleString()}đ
                         </div>
                       </div>
                     </div>
@@ -628,15 +632,18 @@ export const CheckOutPage = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Đăng nhập để đặt món</DialogTitle>
-            <DialogDescription>
-              Bạn cần đăng nhập để đặt món.
-            </DialogDescription>
+            <DialogDescription>Bạn cần đăng nhập để đặt món.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLoginDialog(false)}>
               Hủy
             </Button>
-            <Button onClick={() => { setShowLoginDialog(false); window.location.href = "/login"; }}>
+            <Button
+              onClick={() => {
+                setShowLoginDialog(false);
+                window.location.href = "/login";
+              }}
+            >
               Đăng nhập
             </Button>
           </DialogFooter>
@@ -653,9 +660,7 @@ export const CheckOutPage = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setShowSuccessDialog(false)}>
-              OK
-            </Button>
+            <Button onClick={() => setShowSuccessDialog(false)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -665,26 +670,23 @@ export const CheckOutPage = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Lỗi</DialogTitle>
-            <DialogDescription>
-              {errorMessage}
-            </DialogDescription>
+            <DialogDescription>{errorMessage}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setShowErrorDialog(false)}>
-              OK
-            </Button>
+            <Button onClick={() => setShowErrorDialog(false)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Location Error Dialog */}
-      <Dialog open={showLocationErrorDialog} onOpenChange={setShowLocationErrorDialog}>
+      <Dialog
+        open={showLocationErrorDialog}
+        onOpenChange={setShowLocationErrorDialog}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Lỗi lấy vị trí</DialogTitle>
-            <DialogDescription>
-              {locationErrorMessage}
-            </DialogDescription>
+            <DialogDescription>{locationErrorMessage}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowLocationErrorDialog(false)}>

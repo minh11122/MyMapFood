@@ -26,7 +26,10 @@ import {
   CartPage,
   
   OrderManagement,
-  MenuStockManagement
+  MenuStockManagement,
+  OwnerPage,
+  StoreFinancePage,
+  StoreProfilePage
 
 } from "@/pages";
 
@@ -126,12 +129,20 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "manager",
-    element: <DashboardMainLayout allowedRoles={["MANAGER"]} />,
+    path: "store-director",
+    element: <DashboardMainLayout allowedRoles={["STORE_DIRECTOR"]} />,
     children: [
       {
-        path: "list-user",
-        element: <AccountManagement/>,
+        path: "list-food",
+        element: <OwnerPage/>,
+      },
+      {
+        path: "finance",
+        element: <StoreFinancePage/>,
+      },
+      {
+        path: "profile",
+        element: <StoreProfilePage/>,
       },
     ],
   },

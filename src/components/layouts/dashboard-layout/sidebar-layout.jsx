@@ -13,9 +13,9 @@ export const SidebarLayOut = ({ role }) => {
     { to: "list-order", label: "Danh Sách Tài Khoản", icon: Home, allowedRoles: ["SELLER_STAFF"] },
     { to: "list-menu-stock", label: "Danh Sách Tài Khoản", icon: Home, allowedRoles: ["SELLER_STAFF"] },
     
-    { to: "menu", label: "Thực đơn", icon: Package, allowedRoles: ["MANAGER", "SELLER_STAFF"] },
-    { to: "analytics", label: "Thống kê", icon: TrendingUp, allowedRoles: ["MANAGER"] },
-    { to: "customers", label: "Khách hàng", icon: Users, allowedRoles: ["MANAGER"] },
+    { to: "profile", label: "profile", icon: Package, allowedRoles: ["STORE_DIRECTOR"] },
+    { to: "list-food", label: "Danh Sách món ăn", icon: TrendingUp, allowedRoles: ["STORE_DIRECTOR"] },
+    { to: "finance", label: "Tài chính", icon: Users, allowedRoles: ["STORE_DIRECTOR"] },
   ];
 
   const filteredMenu = menuItems.filter(item => item.allowedRoles.includes(role));

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronDown, Store, Calendar, Receipt, CreditCard, MapPin, Package, X } from "lucide-react"
+import { ChevronDown, Store, Calendar, Receipt, CreditCard, MapPin, Package, X, User, Phone, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -34,14 +34,35 @@ export const HistoryPage = () => {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-              restaurant: o.shop?.name || "Không xác định",
-              address: o.deliveryAddress?.address?.street || "Không xác định",
-              items: o.cartItems || [],
+              // ✅ NGƯỜI ĐẶT HÀNG (CUSTOMER)
+              customerName: o.customer?.full_name || "Không xác định",
+              customerPhone: o.customer?.phone || "",
+              customerAvatar: o.customer?.avatar_url || "",
+              // ✅ NGƯỜI NHẬN HÀNG
+              receiverName: o.receiverName || "Không xác định",
+              receiverPhone: o.receiverPhone || "",
+              receiverEmail: o.receiverEmail || "",
+              // ✅ CỬA HÀNG
+              shopName: o.shop?.name || "Không xác định",
+              shopImage: o.shop?.img || "",
+              shopAddress: `${o.shop?.address?.street || ''}, ${o.shop?.address?.ward || ''}, ${o.shop?.address?.district || ''}, ${o.shop?.address?.city || ''}`.trim(),
+              // ✅ ĐỊA CHỈ GIAO HÀNG
+              deliveryAddress: o.deliveryAddress?.address?.street || "Không xác định",
+              // ✅ SẢN PHẨM
+              items: (o.cartItems || []).map(item => ({
+                ...item,
+                foodImage: item.food?.image_url || item.food?.img || o.shop?.img || "",
+                shopImage: o.shop?.img || "",
+              })),
+              // ✅ GIÁ TIỀN (từ API)
               total: o.totalAmount || 0,
               subtotal: o.subtotal || 0,
               shippingFee: o.shippingFee || 0,
               discount: o.discountAmount || 0,
+              // ✅ THANH TOÁN
               paymentMethod: o.paymentMethod === "COD" ? "Thanh toán khi nhận hàng" : o.paymentMethod,
+              paymentStatus: o.paymentStatus,
+              // ✅ TRẠNG THÁI
               status:
                 o.status === "DELIVERED"
                   ? "Hoàn thành"
@@ -200,12 +221,24 @@ export const HistoryPage = () => {
                   key={order.id}
                   className="bg-card border border-border rounded-xl overflow-hidden transition-all hover:shadow-md"
                 >
-                  {/* Collapsed Header - Always Visible */}
+                  {/* HEADER */}
                   <div className="w-full p-5 flex items-center justify-between hover:bg-muted/30 transition-colors">
                     <div className="flex-1 text-left" onClick={() => toggleOrder(order.id)}>
                       <div className="flex items-center gap-3 mb-2">
-                        <Store className="w-5 h-5 text-primary flex-shrink-0" />
-                        <h3 className="font-semibold text-foreground text-lg">{order.restaurant}</h3>
+                        {/* Ảnh cửa hàng trong header */}
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                          {order.shopImage ? (
+                            <img
+                              src={order.shopImage}
+                              alt={order.shopName}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <Store className="w-5 h-5 text-muted-foreground m-auto mt-2.5" />
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-foreground text-lg">{order.shopName}</h3>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1.5">
@@ -255,60 +288,185 @@ export const HistoryPage = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Details */}
+                  {/* EXPANDED DETAILS */}
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+                      isExpanded ? "max-h-[2500px] opacity-100" : "max-h-0 opacity-0"
                     }`}
                   >
                     <div className="px-5 pb-5 pt-2 border-t border-border bg-muted/20">
-                      {/* Order Items */}
+                      
+                      {/* ✅ 1. THÔNG TIN NGƯỜI ĐẶT HÀNG */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          <span>Người đặt hàng</span>
+                        </h4>
+                        <div className="bg-card p-4 rounded-lg">
+                          <div className="flex items-start gap-4">
+                            {/* Avatar người đặt */}
+                            <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                              {order.customerAvatar ? (
+                                <img
+                                  src={order.customerAvatar}
+                                  alt={order.customerName}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <User className="w-6 h-6 text-muted-foreground m-auto mt-3" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-foreground truncate">{order.customerName}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm text-foreground">{order.customerPhone}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ✅ 2. THÔNG TIN CỬA HÀNG */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Store className="w-4 h-4" />
+                          <span>Cửa hàng</span>
+                        </h4>
+                        <div className="bg-card p-4 rounded-lg">
+                          <div className="flex items-start gap-4">
+                            {/* Ảnh cửa hàng */}
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                              {order.shopImage ? (
+                                <img
+                                  src={order.shopImage}
+                                  alt={order.shopName}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <Store className="w-8 h-8 text-muted-foreground m-auto mt-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-semibold text-foreground truncate">{order.shopName}</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-foreground break-words">{order.shopAddress}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ✅ 3. THÔNG TIN NGƯỜI NHẬN */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          <span>Người nhận hàng</span>
+                        </h4>
+                        <div className="bg-card p-4 rounded-lg space-y-2">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm font-medium text-foreground">{order.receiverName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm text-foreground">{order.receiverPhone}</span>
+                          </div>
+                          {order.receiverEmail && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-foreground">{order.receiverEmail}</span>
+                            </div>
+                          )}
+                          <div className="flex items-start gap-2 pt-2 border-t border-border mt-2">
+                            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-foreground break-words">{order.deliveryAddress}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ✅ 4. MÓN ĂN */}
                       <div className="mb-4">
                         <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                           <Package className="w-4 h-4" />
                           Món ăn ({order.items.length})
                         </h4>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-start text-sm bg-card p-3 rounded-lg">
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">{item.food?.name || "Món ăn"}</p>
-                                {item.note && (
-                                  <p className="text-xs text-muted-foreground mt-1">Ghi chú: {item.note}</p>
+                            <div key={idx} className="flex items-start gap-3 bg-card p-4 rounded-lg border border-border">
+                              <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                                {item.foodImage ? (
+                                  <img
+                                    src={item.foodImage}
+                                    alt={item.food?.name || "Món ăn"}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                ) : item.shopImage ? (
+                                  <img
+                                    src={item.shopImage}
+                                    alt={item.food?.name || "Món ăn"}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                ) : (
+                                  <Package className="w-6 h-6 text-muted-foreground m-auto mt-3" />
                                 )}
                               </div>
-                              <div className="text-right ml-4">
-                                <p className="text-muted-foreground">x{item.quantity}</p>
-                                <p className="font-medium text-foreground">{item.price.toLocaleString("vi-VN")}₫</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-foreground text-sm mb-1 truncate">{item.food?.name || "Món ăn"}</p>
+                                {item.note && (
+                                  <p className="text-xs text-muted-foreground mb-2">Ghi chú: {item.note}</p>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">x{item.quantity}</span>
+                                  <p className="font-semibold text-foreground text-sm">
+                                    {(item.price * item.quantity).toLocaleString("vi-VN")}₫
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {/* Delivery Info */}
+                      {/* ✅ 5. THANH TOÁN & GIAO HÀNG */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="bg-card p-3 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Địa chỉ giao hàng</p>
-                              <p className="text-sm text-foreground">{order.address}</p>
-                            </div>
-                          </div>
-                        </div>
                         <div className="bg-card p-3 rounded-lg">
                           <div className="flex items-start gap-2">
                             <CreditCard className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Phương thức thanh toán</p>
                               <p className="text-sm text-foreground">{order.paymentMethod}</p>
+                              <p className={`text-xs mt-1 px-2 py-0.5 rounded-full ${
+                                order.paymentStatus === "PAID" 
+                                  ? "bg-emerald-50 text-emerald-700" 
+                                  : "bg-amber-50 text-amber-700"
+                              }`}>
+                                {order.paymentStatus === "PAID" ? "Đã thanh toán" : "Chưa thanh toán"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-card p-3 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Địa chỉ giao hàng</p>
+                              <p className="text-sm text-foreground break-words">{order.deliveryAddress}</p>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Note */}
+                      {/* ✅ 6. GHI CHÚ */}
                       {order.note && (
                         <div className="bg-card p-3 rounded-lg mb-4">
                           <p className="text-xs text-muted-foreground mb-1">Ghi chú đơn hàng</p>
@@ -316,7 +474,7 @@ export const HistoryPage = () => {
                         </div>
                       )}
 
-                      {/* Price Breakdown */}
+                      {/* ✅ 7. PHÂN TÍCH GIÁ */}
                       <div className="bg-card p-4 rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Tạm tính</span>
@@ -346,7 +504,7 @@ export const HistoryPage = () => {
         </div>
       </div>
 
-      {/* Cancel Dialog */}
+      {/* CANCEL DIALOG */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>
           <DialogHeader>

@@ -32,71 +32,20 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  DialogDescription,  
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import toast from "react-hot-toast";
+import { listAccounts, updateAccountAndUser } from "@/services/admin.service"; // Giả sử đường dẫn service đúng
 
-// Dữ liệu mẫu (giả lập từ schema MongoDB)
-const mockAccounts = [
-  {
-    _id: "1",
-    email: "user1@example.com",
-    provider: "local",
-    status: "ACTIVE",
-    role_id: "admin",
-    createdAt: "2025-10-01T10:00:00Z",
-  },
-  {
-    _id: "2",
-    email: "user2@example.com",
-    provider: "google",
-    status: "INACTIVE",
-    role_id: "user",
-    createdAt: "2025-10-02T12:00:00Z",
-  },
-  {
-    _id: "3",
-    email: "editor@example.com",
-    provider: "local",
-    status: "PENDING",
-    role_id: "editor",
-    createdAt: "2025-10-03T15:00:00Z",
-  },
-  {
-    _id: "4",
-    email: "banned@example.com",
-    provider: "local",
-    status: "BANNED",
-    role_id: "user",
-    createdAt: "2025-10-04T09:00:00Z",
-  },
-  {
-    _id: "5",
-    email: "admin@example.com",
-    provider: "google",
-    status: "ACTIVE",
-    role_id: "admin",
-    createdAt: "2025-10-04T11:00:00Z",
-  },
-  // Thêm dữ liệu mẫu để kiểm tra phân trang
-  ...Array.from({ length: 10 }, (_, i) => ({
-    _id: `${i + 6}`,
-    email: `user${i + 6}@example.com`,
-    provider: i % 2 === 0 ? "local" : "google",
-    status: ["ACTIVE", "INACTIVE", "PENDING", "BANNED"][i % 4],
-    role_id: ["user", "editor", "admin"][i % 3],
-    createdAt: `2025-10-04T${(i + 10).toString().padStart(2, "0")}:00:00Z`,
-  })),
-];
-
-// Dữ liệu vai trò mẫu
+// Dữ liệu role mẫu
 const roles = [
-  { _id: "admin", name: "Admin" },
-  { _id: "user", name: "User" },
-  { _id: "editor", name: "Editor" },
+  { _id: "68e44bdbd727678bb423310c", name: "ADMIN" },
+  { _id: "68e44bdbd727678bb4233108", name: "CUSTOMER" },
+  { _id: "68e44bdbd727678bb4233109", name: "SELLER_STAFF" },
 ];
 
 export const AccountManagement = () => {
@@ -105,55 +54,120 @@ export const AccountManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editStatus, setEditStatus] = useState("ACTIVE");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const itemsPerPage = 10;
 
-  // Lọc tài khoản
-  const filteredAccounts = useMemo(() => {
-    return mockAccounts.filter((account) => {
-      const matchesSearch = account.email
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all" || account.status === statusFilter;
-      const matchesRole =
-        roleFilter === "all" || account.role_id === roleFilter;
-      return matchesSearch && matchesStatus && matchesRole;
-    });
-  }, [searchQuery, statusFilter, roleFilter]);
+  // Fetch accounts từ API
+  const fetchAccounts = async (page = 1, search = "", role = "all", status = "all") => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        ...(search && { search }),
+        ...(role !== "all" && { role }),
+        ...(status !== "all" && { status }),
+      };
+      const response = await listAccounts(params);
+      setAccounts(response.data.accounts || []);
+      setTotalPages(response.data.totalPages || 1);
+      if (page === 1) {
+        setCurrentPage(1);
+      }
+    } catch (error) {
+      toast.error("Không thể tải danh sách tài khoản. Vui lòng thử lại.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Phân trang
-  const paginatedAccounts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredAccounts.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredAccounts, currentPage]);
+  // Load ban đầu
+  useEffect(() => {
+    fetchAccounts(currentPage, searchQuery, roleFilter, statusFilter);
+  }, [currentPage, searchQuery, roleFilter, statusFilter]);
 
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+  // Lọc và phân trang dựa trên API (API đã xử lý filter và paginate)
+  const paginatedAccounts = useMemo(() => accounts, [accounts]);
 
   // Reset trang khi thay đổi bộ lọc
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, roleFilter]);
 
-  // Xử lý đổi trạng thái
+  // Xử lý đổi trạng thái (confirmation dialog)
   const handleStatusChange = async () => {
     setIsUpdating(true);
     try {
-      // Giả lập gọi API
-      const newStatus =
-        selectedAccount.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-      // await updateAccountStatus(selectedAccount._id, newStatus);
-      // Cập nhật mock data
-      mockAccounts.find((acc) => acc._id === selectedAccount._id).status =
-        newStatus;
+      const newStatus = selectedAccount.status === "ACTIVE" ? "PENDING" : "ACTIVE";
+      await updateAccountAndUser(selectedAccount._id, { status: newStatus });
+      // Cập nhật local state
+      setAccounts((prev) =>
+        prev.map((acc) =>
+          acc._id === selectedAccount._id ? { ...acc, status: newStatus } : acc
+        )
+      );
       toast.success(
-        `Đã cập nhật trạng thái tài khoản ${selectedAccount.email} thành ${newStatus}`
+        `Đã cập nhật trạng thái tài khoản ${selectedAccount.user?.full_name || selectedAccount.email} thành ${newStatus}`
       );
       setDialogOpen(false);
     } catch (error) {
       toast.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+      console.error(error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Xử lý cập nhật đầy đủ (edit dialog)
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      const data = {};
+      const originalFullName = selectedAccount.user?.full_name || "";
+      const originalStatus = selectedAccount.status;
+
+      if (editFullName !== originalFullName) {
+        data.full_name = editFullName;
+      }
+      if (editStatus !== originalStatus) {
+        data.status = editStatus;
+      }
+
+      if (Object.keys(data).length === 0) {
+        toast.info("Không có thay đổi nào.");
+        setEditDialogOpen(false);
+        return;
+      }
+
+      await updateAccountAndUser(selectedAccount._id, data);
+      // Cập nhật local state
+      setAccounts((prev) =>
+        prev.map((acc) =>
+          acc._id === selectedAccount._id
+            ? {
+                ...acc,
+                status: data.status || acc.status,
+                user: {
+                  ...acc.user,
+                  full_name: data.full_name || acc.user.full_name,
+                },
+              }
+            : acc
+        )
+      );
+      toast.success("Cập nhật thành công!");
+      setEditDialogOpen(false);
+    } catch (error) {
+      toast.error("Không thể cập nhật. Vui lòng thử lại.");
+      console.error(error);
     } finally {
       setIsUpdating(false);
     }
@@ -163,26 +177,63 @@ export const AccountManagement = () => {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
+      fetchAccounts(page, searchQuery, roleFilter, statusFilter);
     }
   };
 
-  // Lấy tên vai trò từ role_id
+  // Lấy tên role
   const getRoleName = (roleId) => {
-    const role = roles.find((r) => r._id === roleId);
+    const role = roles.find((r) => r._id === roleId?._id);
     return role ? role.name : "Unknown";
   };
+
+  // Badge cho email verified
+  const getVerifiedBadge = (verified) => {
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${
+          verified ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+        }`}
+      >
+        {verified ? "Đã xác thực" : "Chưa xác thực"}
+      </span>
+    );
+  };
+
+  // Badge cho status
+  const getStatusBadge = (status) => {
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${
+          status === "ACTIVE"
+            ? "bg-green-100 text-green-800"
+            : "bg-yellow-100 text-yellow-800"
+        }`}
+      >
+        {status}
+      </span>
+    );
+  };
+
+  if (loading && accounts.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý tài khoản</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Danh sách tài khoản</h1>
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Tìm kiếm email..."
+                placeholder="Tìm kiếm email hoặc tên..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -194,10 +245,8 @@ export const AccountManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="BANNED">Banned</SelectItem>
+                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                <SelectItem value="PENDING">Chờ kích hoạt</SelectItem>
               </SelectContent>
             </Select>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -222,9 +271,11 @@ export const AccountManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead className="font-semibold text-gray-700">Email</TableHead>
-                <TableHead className="font-semibold text-gray-700">Provider</TableHead>
-                <TableHead className="font-semibold text-gray-700">Status</TableHead>
-                <TableHead className="font-semibold text-gray-700">Role</TableHead>
+                <TableHead className="font-semibold text-gray-700">Tên đầy đủ</TableHead>
+                <TableHead className="font-semibold text-gray-700">Vai trò</TableHead>
+                <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
+                <TableHead className="font-semibold text-gray-700">Xác thực email</TableHead>
+                <TableHead className="font-semibold text-gray-700">Số điện thoại</TableHead>
                 <TableHead className="font-semibold text-gray-700">Created At</TableHead>
                 <TableHead className="font-semibold text-gray-700">Action</TableHead>
               </TableRow>
@@ -232,36 +283,33 @@ export const AccountManagement = () => {
             <TableBody>
               {paginatedAccounts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     Không tìm thấy tài khoản nào
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedAccounts.map((account) => (
-                  <TableRow key={account._id}>
+                  <TableRow 
+                    key={account._id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onDoubleClick={() => {
+                      setSelectedAccount(account);
+                      setEditFullName(account.user?.full_name || "");
+                      setEditStatus(account.status);
+                      setEditDialogOpen(true);
+                    }}
+                  >
                     <TableCell className="font-medium">{account.email}</TableCell>
-                    <TableCell>{account.provider}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          account.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : account.status === "INACTIVE"
-                            ? "bg-gray-100 text-gray-800"
-                            : account.status === "PENDING"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {account.status}
-                      </span>
-                    </TableCell>
+                    <TableCell>{account.user?.full_name || "N/A"}</TableCell>
                     <TableCell>{getRoleName(account.role_id)}</TableCell>
+                    <TableCell>{getStatusBadge(account.status)}</TableCell>
+                    <TableCell>{getVerifiedBadge(account.email_verified)}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{account.user?.phone || "N/A"}</TableCell>
                     <TableCell>
                       {new Date(account.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {(account.status === "ACTIVE" || account.status === "INACTIVE") && (
+                      {account.status === "ACTIVE" && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -271,7 +319,20 @@ export const AccountManagement = () => {
                           }}
                           className="border-gray-300 hover:bg-blue-50"
                         >
-                          {account.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                          Deactivate
+                        </Button>
+                      )}
+                      {account.status === "PENDING" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setDialogOpen(true);
+                          }}
+                          className="border-gray-300 hover:bg-blue-50"
+                        >
+                          Activate
                         </Button>
                       )}
                     </TableCell>
@@ -326,10 +387,10 @@ export const AccountManagement = () => {
               <DialogTitle>Xác nhận đổi trạng thái</DialogTitle>
               <DialogDescription>
                 Bạn có chắc muốn đổi trạng thái tài khoản{" "}
-                <span className="font-semibold">{selectedAccount?.email}</span> từ{" "}
+                <span className="font-semibold">{selectedAccount?.user?.full_name || selectedAccount?.email}</span> từ{" "}
                 <span className="font-semibold">{selectedAccount?.status}</span> sang{" "}
                 <span className="font-semibold">
-                  {selectedAccount?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"}
+                  {selectedAccount?.status === "ACTIVE" ? "PENDING" : "ACTIVE"}
                 </span>
                 ?
               </DialogDescription>
@@ -351,6 +412,61 @@ export const AccountManagement = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Xác nhận
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog chỉnh sửa đầy đủ */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa thông tin tài khoản</DialogTitle>
+              <DialogDescription>
+                Cập nhật tên đầy đủ và trạng thái cho tài khoản{" "}
+                <span className="font-semibold">{selectedAccount?.email}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Tên đầy đủ</Label>
+                <Input
+                  id="fullName"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="Nhập tên đầy đủ"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Trạng thái</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger id="status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                    <SelectItem value="PENDING">Chờ kích hoạt</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                className="border-gray-300"
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleUpdate}
+                disabled={isUpdating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isUpdating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Cập nhật
               </Button>
             </DialogFooter>
           </DialogContent>

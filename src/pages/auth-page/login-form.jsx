@@ -56,8 +56,8 @@ export function LoginForm() {
 
         if (role === "ADMIN") {
           navigate("/admin/list-acc");
-        } else if (role === "MANAGER_STAFF") {
-          navigate("/manager/list-food");
+        } else if (role === "STORE_DIRECTOR") {
+          navigate("/store-director/list-user");
         } else if (role === "SELLER_STAFF") {
           navigate("/staff/list-order");
         } else {
@@ -86,8 +86,8 @@ export function LoginForm() {
 
       if (role === "ADMIN") {
         navigate("/admin/list-acc");
-      } else if (role === "MANAGER_STAFF") {
-        navigate("/manager/list-food");
+      } else if (role === "STORE_DIRECTOR") {
+        navigate("/store-director/list-user");
       } else if (role === "SELLER_STAFF") {
         navigate("/staff/list-order");
       } else {
