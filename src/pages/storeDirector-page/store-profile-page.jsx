@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Loader2,
-  Edit,
-} from "lucide-react";
+import { Loader2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import{
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,7 +24,7 @@ import{
   DialogTitle,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
-import { getShopProfile, updateShopProfile } from "../../services/owner.service";
+import { getShopProfile } from "../../services/owner.service";
 
 // Schema cho form cập nhật shop
 const shopSchema = z.object({
@@ -46,7 +43,7 @@ const shopSchema = z.object({
 export const StoreProfilePage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // State cho dữ liệu shop
   const [shopData, setShopData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,24 +70,25 @@ export const StoreProfilePage = () => {
     const loadShopData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Lấy thông tin user từ localStorage
-        const userStr = localStorage.getItem('user');
+        const userStr = localStorage.getItem("user");
         if (!userStr) {
           toast.error("Không tìm thấy thông tin người dùng");
           return;
         }
-        
+
         const user = JSON.parse(userStr);
         const ownerId = user._id;
-        
+
         // Gọi API lấy thông tin shop
         const response = await getShopProfile(ownerId);
-        
-        if (response.data && response.data.shop) {
-          const shop = response.data.shop;
+
+        if (response.data && response.data.data) {
+          const shop = response.data.data;
+
           setShopData(shop);
-          
+
           // Set form values
           form.reset({
             name: shop.name || "",
@@ -104,7 +102,7 @@ export const StoreProfilePage = () => {
             },
             img: shop.img || "",
           });
-          
+
           toast.success("Đã tải thông tin quán thành công");
         } else {
           toast.error("Không tìm thấy thông tin quán");
@@ -125,18 +123,18 @@ export const StoreProfilePage = () => {
     setIsSubmitting(true);
     try {
       // Lấy thông tin user từ localStorage
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem("user");
       if (!userStr) {
         toast.error("Không tìm thấy thông tin người dùng");
         return;
       }
-      
+
       const user = JSON.parse(userStr);
       const ownerId = user._id;
-      
+
       // Gọi API cập nhật shop
       const response = await updateShopProfile(ownerId, data);
-      
+
       if (response.data.success) {
         setShopData({ ...shopData, ...data });
         toast.success("Cập nhật thông tin quán thành công!");
@@ -173,13 +171,17 @@ export const StoreProfilePage = () => {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Chủ Cửa Hàng</h1>
-          
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Dashboard Chủ Cửa Hàng
+          </h1>
+
           {/* Thông tin quán hiện tại */}
           {shopData && (
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Thông tin quán</h2>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Thông tin quán
+                </h2>
                 <Button
                   variant="outline"
                   onClick={openEdit}
@@ -189,47 +191,64 @@ export const StoreProfilePage = () => {
                   Sửa thông tin
                 </Button>
               </div>
-              
+
               {shopData.img && (
-                <img 
-                  src={shopData.img} 
+                <img
+                  src={shopData.img}
                   alt={shopData.name}
                   className="w-full h-48 rounded-lg object-cover mb-4"
                 />
               )}
-              
+
               <div className="space-y-2">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Tên quán:</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Tên quán:
+                  </Label>
                   <p className="text-lg font-semibold">{shopData.name}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Mô tả:</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Mô tả:
+                  </Label>
                   <p>{shopData.description}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Số điện thoại:</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Số điện thoại:
+                  </Label>
                   <p>{shopData.phone}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Địa chỉ:</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Địa chỉ:
+                  </Label>
                   <p>
-                    {shopData.address?.street}, {shopData.address?.ward}, {shopData.address?.district}, {shopData.address?.city}
+                    {shopData.address?.street}, {shopData.address?.ward},{" "}
+                    {shopData.address?.district}, {shopData.address?.city}
                   </p>
                 </div>
                 {shopData.status && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Trạng thái:</Label>
-                    <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                      shopData.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <Label className="text-sm font-medium text-gray-600">
+                      Trạng thái:
+                    </Label>
+                    <span
+                      className={`inline-block px-2 py-1 text-xs rounded-full ${
+                        shopData.status === "ACTIVE"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
                       {shopData.status}
                     </span>
                   </div>
                 )}
                 {shopData.rating && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Đánh giá:</Label>
+                    <Label className="text-sm font-medium text-gray-600">
+                      Đánh giá:
+                    </Label>
                     <p>⭐ {shopData.rating}/5</p>
                   </div>
                 )}
@@ -248,7 +267,10 @@ export const StoreProfilePage = () => {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="name"
@@ -336,7 +358,9 @@ export const StoreProfilePage = () => {
                     name="address.city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="sr-only">Tỉnh/Thành phố</FormLabel>
+                        <FormLabel className="sr-only">
+                          Tỉnh/Thành phố
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Tỉnh/Thành phố" {...field} />
                         </FormControl>
@@ -352,7 +376,10 @@ export const StoreProfilePage = () => {
                     <FormItem>
                       <FormLabel>URL hình ảnh (tùy chọn)</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/image.jpg" {...field} />
+                        <Input
+                          placeholder="https://example.com/image.jpg"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -367,7 +394,11 @@ export const StoreProfilePage = () => {
                   >
                     Hủy
                   </Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     {isSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}

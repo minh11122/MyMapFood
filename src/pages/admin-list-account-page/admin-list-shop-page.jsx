@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   ChevronDown,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -36,161 +37,167 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
-
-// Dữ liệu mẫu (giả lập từ schema MongoDB)
-const mockRestaurants = [
-  {
-    _id: "1",
-    name: "Nhà hàng Á Đông",
-    address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-    cuisine: "Asian",
-    status: "OPEN",
-    rating: 4.5,
-    createdAt: "2025-10-01T10:00:00Z",
-  },
-  {
-    _id: "2",
-    name: "Bistro Pháp",
-    address: "456 Đường Nguyễn Huệ, Quận 1, TP.HCM",
-    cuisine: "French",
-    status: "CLOSED",
-    rating: 4.2,
-    createdAt: "2025-10-02T12:00:00Z",
-  },
-  {
-    _id: "3",
-    name: "Pizza Hut",
-    address: "789 Đường Pasteur, Quận 3, TP.HCM",
-    cuisine: "Italian",
-    status: "PENDING",
-    rating: 4.0,
-    createdAt: "2025-10-03T15:00:00Z",
-  },
-  {
-    _id: "4",
-    name: "Sushi Bar",
-    address: "101 Đường Võ Văn Tần, Quận 3, TP.HCM",
-    cuisine: "Japanese",
-    status: "OPEN",
-    rating: 4.8,
-    createdAt: "2025-10-04T09:00:00Z",
-  },
-  {
-    _id: "5",
-    name: "Grill House",
-    address: "202 Đường Lý Tự Trọng, Quận 1, TP.HCM",
-    cuisine: "American",
-    status: "CLOSED",
-    rating: 4.3,
-    createdAt: "2025-10-04T11:00:00Z",
-  },
-  // Thêm dữ liệu mẫu để kiểm tra phân trang
-  ...Array.from({ length: 10 }, (_, i) => ({
-    _id: `${i + 6}`,
-    name: `Nhà hàng ${i + 6}`,
-    address: `Địa chỉ ${i + 6}, Quận 1, TP.HCM`,
-    cuisine: ["Asian", "French", "Italian", "Japanese", "American"][i % 5],
-    status: ["OPEN", "CLOSED", "PENDING"][i % 3],
-    rating: (4.0 + Math.random() * 0.9).toFixed(1),
-    createdAt: `2025-10-04T${(i + 10).toString().padStart(2, "0")}:00:00Z`,
-  })),
-];
-
-// Dữ liệu loại ẩm thực mẫu
-const cuisines = [
-  { _id: "Asian", name: "Asian" },
-  { _id: "French", name: "French" },
-  { _id: "Italian", name: "Italian" },
-  { _id: "Japanese", name: "Japanese" },
-  { _id: "American", name: "American" },
-];
+import { listShops, updateShop } from "@/services/admin.service";
 
 export const ShopManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [cuisineFilter, setCuisineFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [shopsData, setShopsData] = useState({ shops: [], totalPages: 1, currentPage: 1 });
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedShop, setSelectedShop] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-
-  const itemsPerPage = 10;
-
-  // Lọc nhà hàng
-  const filteredRestaurants = useMemo(() => {
-    return mockRestaurants.filter((restaurant) => {
-      const matchesSearch = restaurant.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all" || restaurant.status === statusFilter;
-      const matchesCuisine =
-        cuisineFilter === "all" || restaurant.cuisine === cuisineFilter;
-      return matchesSearch && matchesStatus && matchesCuisine;
-    });
-  }, [searchQuery, statusFilter, cuisineFilter]);
-
-  // Phân trang
-  const paginatedRestaurants = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredRestaurants.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredRestaurants, currentPage]);
-
-  const totalPages = Math.ceil(filteredRestaurants.length / itemsPerPage);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
 
   // Reset trang khi thay đổi bộ lọc
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, cuisineFilter]);
+  }, [searchQuery, statusFilter]);
+
+  // Set form data when opening edit dialog
+  useEffect(() => {
+    if (selectedShop && editDialogOpen) {
+      setEditForm({
+        name: selectedShop.name || "",
+        description: selectedShop.description || "",
+        address: selectedShop.address || { street: "", ward: "", district: "", city: "", province: "" },
+        phone: selectedShop.phone || "",
+        status: selectedShop.status || "ACTIVE",
+        img: selectedShop.img || "",
+      });
+    }
+  }, [selectedShop, editDialogOpen]);
+
+  // Fetch shops từ adminService
+  useEffect(() => {
+    const fetchShops = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page: currentPage,
+          search: searchQuery,
+          status: statusFilter === "all" ? "" : statusFilter,
+        };
+        const data = await listShops(params);
+        setShopsData(data);
+      } catch (error) {
+        console.error("Error fetching shops:", error);
+        toast.error("Không thể tải danh sách cửa hàng. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShops();
+  }, [currentPage, searchQuery, statusFilter]);
 
   // Xử lý đổi trạng thái
   const handleStatusChange = async () => {
     setIsUpdating(true);
     try {
-      // Giả lập gọi API
-      const newStatus =
-        selectedRestaurant.status === "OPEN" ? "CLOSED" : "OPEN";
-      // await updateRestaurantStatus(selectedRestaurant._id, newStatus);
-      // Cập nhật mock data
-      mockRestaurants.find((res) => res._id === selectedRestaurant._id).status =
-        newStatus;
+      const newStatus = selectedShop.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      await updateShopStatus(selectedShop._id, newStatus);
       toast.success(
-        `Đã cập nhật trạng thái nhà hàng ${selectedRestaurant.name} thành ${newStatus}`
+        `Đã cập nhật trạng thái cửa hàng ${selectedShop.name} thành ${newStatus}`
       );
       setDialogOpen(false);
+      // Refetch để cập nhật dữ liệu
+      const params = {
+        page: currentPage,
+        search: searchQuery,
+        status: statusFilter === "all" ? "" : statusFilter,
+      };
+      const data = await listShops(params);
+      setShopsData(data);
     } catch (error) {
+      console.error("Error updating status:", error);
       toast.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
     } finally {
       setIsUpdating(false);
     }
   };
 
+  // Xử lý update shop
+  const handleUpdateShop = async (e) => {
+    e.preventDefault();
+    setIsEditing(true);
+    try {
+      const updateData = {
+        name: editForm.name,
+        description: editForm.description,
+        address: editForm.address,
+        phone: editForm.phone,
+        status: editForm.status,
+        img: editForm.img,
+      };
+      await updateShop(selectedShop._id, updateData);
+      toast.success("Đã cập nhật thông tin cửa hàng thành công");
+      setEditDialogOpen(false);
+      // Refetch để cập nhật dữ liệu
+      const params = {
+        page: currentPage,
+        search: searchQuery,
+        status: statusFilter === "all" ? "" : statusFilter,
+      };
+      const data = await listShops(params);
+      setShopsData(data);
+    } catch (error) {
+      console.error("Error updating shop:", error);
+      toast.error("Không thể cập nhật thông tin. Vui lòng thử lại.");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   // Xử lý thay đổi trang
   const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
+    if (page >= 1 && page <= shopsData.totalPages) {
       setCurrentPage(page);
     }
   };
 
-  // Lấy tên loại ẩm thực từ cuisine
-  const getCuisineName = (cuisineId) => {
-    const cuisine = cuisines.find((c) => c._id === cuisineId);
-    return cuisine ? cuisine.name : "Unknown";
+  const shops = shopsData.shops || [];
+
+  const formatAddress = (address) => {
+    return `${address.street || ""}, ${address.ward || ""}, ${address.district || ""}, ${address.city || ""}`;
   };
+
+  const handleInputChange = (field, value) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddressChange = (subfield, value) => {
+    setEditForm(prev => ({
+      ...prev,
+      address: { ...prev.address, [subfield]: value }
+    }));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Danh sách nhà hàng</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Danh sách cửa hàng</h1>
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Tìm kiếm tên nhà hàng..."
+                placeholder="Tìm kiếm tên cửa hàng..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -202,22 +209,8 @@ export const ShopManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="OPEN">Mở cửa</SelectItem>
-                <SelectItem value="CLOSED">Đóng cửa</SelectItem>
-                <SelectItem value="PENDING">Chờ duyệt</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={cuisineFilter} onValueChange={setCuisineFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Lọc theo loại ẩm thực" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả loại</SelectItem>
-                {cuisines.map((cuisine) => (
-                  <SelectItem key={cuisine._id} value={cuisine._id}>
-                    {cuisine.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                <SelectItem value="INACTIVE">Không hoạt động</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -228,57 +221,64 @@ export const ShopManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="font-semibold text-gray-700">Tên nhà hàng</TableHead>
-                <TableHead className="font-semibold text-gray-700">Loại ẩm thực</TableHead>
-                <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
+                <TableHead className="font-semibold text-gray-700">Tên cửa hàng</TableHead>
                 <TableHead className="font-semibold text-gray-700">Địa chỉ</TableHead>
-                <TableHead className="font-semibold text-gray-700">Đánh giá</TableHead>
-                <TableHead className="font-semibold text-gray-700">Created At</TableHead>
-                <TableHead className="font-semibold text-gray-700">Action</TableHead>
+                <TableHead className="font-semibold text-gray-700">Số điện thoại</TableHead>
+                <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
+                <TableHead className="font-semibold text-gray-700">Hình ảnh</TableHead>
+                <TableHead className="font-semibold text-gray-700">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedRestaurants.length === 0 ? (
+              {shops.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                    Không tìm thấy nhà hàng nào
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    Không tìm thấy cửa hàng nào
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedRestaurants.map((restaurant) => (
-                  <TableRow key={restaurant._id}>
-                    <TableCell className="font-medium">{restaurant.name}</TableCell>
-                    <TableCell>{getCuisineName(restaurant.cuisine)}</TableCell>
+                shops.map((shop) => (
+                  <TableRow 
+                    key={shop._id} 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onDoubleClick={() => {
+                      setSelectedShop(shop);
+                      setEditDialogOpen(true);
+                    }}
+                  >
+                    <TableCell className="font-medium">{shop.name}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{formatAddress(shop.address)}</TableCell>
+                    <TableCell className="text-sm">{shop.phone}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          restaurant.status === "OPEN"
+                          shop.status === "ACTIVE"
                             ? "bg-green-100 text-green-800"
-                            : restaurant.status === "CLOSED"
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {restaurant.status}
+                        {shop.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">{restaurant.address}</TableCell>
-                    <TableCell>{restaurant.rating}</TableCell>
                     <TableCell>
-                      {new Date(restaurant.createdAt).toLocaleDateString()}
+                      <img
+                        src={shop.img}
+                        alt={shop.name}
+                        className="w-20 h-20 object-cover rounded"
+                      />
                     </TableCell>
                     <TableCell>
-                      {(restaurant.status === "OPEN" || restaurant.status === "CLOSED") && (
+                      {(shop.status === "ACTIVE" || shop.status === "INACTIVE") && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setSelectedRestaurant(restaurant);
+                            setSelectedShop(shop);
                             setDialogOpen(true);
                           }}
                           className="border-gray-300 hover:bg-blue-50"
                         >
-                          {restaurant.status === "OPEN" ? "Đóng cửa" : "Mở cửa"}
+                          {shop.status === "ACTIVE" ? "Tắt hoạt động" : "Kích hoạt"}
                         </Button>
                       )}
                     </TableCell>
@@ -290,7 +290,7 @@ export const ShopManagement = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {shopsData.totalPages > 1 && (
           <div className="flex justify-center mt-6">
             <Pagination>
               <PaginationContent>
@@ -302,7 +302,7 @@ export const ShopManagement = () => {
                     }
                   />
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: shopsData.totalPages }, (_, i) => i + 1).map((page) => (
                   <PaginationItem key={page}>
                     <PaginationLink
                       isActive={currentPage === page}
@@ -317,7 +317,7 @@ export const ShopManagement = () => {
                   <PaginationNext
                     onClick={() => handlePageChange(currentPage + 1)}
                     className={
-                      currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
+                      currentPage === shopsData.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
                     }
                   />
                 </PaginationItem>
@@ -332,11 +332,11 @@ export const ShopManagement = () => {
             <DialogHeader>
               <DialogTitle>Xác nhận đổi trạng thái</DialogTitle>
               <DialogDescription>
-                Bạn có chắc muốn đổi trạng thái nhà hàng{" "}
-                <span className="font-semibold">{selectedRestaurant?.name}</span> từ{" "}
-                <span className="font-semibold">{selectedRestaurant?.status}</span> sang{" "}
+                Bạn có chắc muốn đổi trạng thái cửa hàng{" "}
+                <span className="font-semibold">{selectedShop?.name}</span> từ{" "}
+                <span className="font-semibold">{selectedShop?.status}</span> sang{" "}
                 <span className="font-semibold">
-                  {selectedRestaurant?.status === "OPEN" ? "CLOSED" : "OPEN"}
+                  {selectedShop?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"}
                 </span>
                 ?
               </DialogDescription>
@@ -360,6 +360,122 @@ export const ShopManagement = () => {
                 Xác nhận
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog chỉnh sửa shop */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa cửa hàng: {selectedShop?.name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateShop} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên cửa hàng</label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                <Textarea
+                  value={editForm.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Số phố, đường"
+                    value={editForm.address?.street || ""}
+                    onChange={(e) => handleAddressChange('street', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Phường/Xã"
+                    value={editForm.address?.ward || ""}
+                    onChange={(e) => handleAddressChange('ward', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Quận/Huyện"
+                    value={editForm.address?.district || ""}
+                    onChange={(e) => handleAddressChange('district', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Thành phố"
+                    value={editForm.address?.city || ""}
+                    onChange={(e) => handleAddressChange('city', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Tỉnh/Thành"
+                    value={editForm.address?.province || ""}
+                    onChange={(e) => handleAddressChange('province', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                <Input
+                  value={editForm.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                <Select value={editForm.status} onValueChange={(value) => handleInputChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                    <SelectItem value="INACTIVE">Không hoạt động</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">URL hình ảnh</label>
+                <Input
+                  value={editForm.img}
+                  onChange={(e) => handleInputChange('img', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              <div className="text-sm text-gray-500">
+                <p>Đánh giá: {selectedShop?.rating || 0}</p>
+                <p>Ngày tạo: {new Date(selectedShop?.createdAt).toLocaleDateString("vi-VN")}</p>
+                {selectedShop?.owner && (
+                  <p>Chủ sở hữu: {selectedShop.owner.full_name}</p>
+                )}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  className="border-gray-300"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isEditing}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isEditing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Đang cập nhật
+                    </>
+                  ) : (
+                    "Cập nhật"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -46,16 +48,18 @@ const foodSchema = z.object({
   price: z.coerce.number().positive("Giá phải lớn hơn 0"),
   discount: z.coerce.number().min(0).max(100, "Giảm giá phải từ 0-100%"),
   image_url: z.string().url("URL hình ảnh không hợp lệ").optional(),
+  is_available: z.boolean(),
 });
 
- // Default values
-  const defaultValues = {
-    name: "",
-    description: "",
-    price: 0,
-    discount: 0,
-    image_url: "",
-  };
+// Default values
+const defaultValues = {
+  name: "",
+  description: "",
+  price: 0,
+  discount: 0,
+  image_url: "",
+  is_available: true,
+};
 
 export const OwnerPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -129,6 +133,7 @@ export const OwnerPage = () => {
           price: selectedFood.price,
           discount: selectedFood.discount,
           image_url: selectedFood.image_url,
+          is_available: selectedFood.is_available,
         });
       } else {
         form.reset(defaultValues);
@@ -265,9 +270,9 @@ export const OwnerPage = () => {
                 <TableRow>
                   <TableHead className="font-semibold text-gray-700">Hình ảnh</TableHead>
                   <TableHead className="font-semibold text-gray-700">Tên món</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Mô tả</TableHead>
                   <TableHead className="font-semibold text-gray-700">Giá</TableHead>
                   <TableHead className="font-semibold text-gray-700">Giảm giá</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
                   <TableHead className="font-semibold text-gray-700">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -282,24 +287,38 @@ export const OwnerPage = () => {
                   </TableRow>
                 ) : (
                   filteredFoods.map((food) => (
-                    <TableRow key={food._id}>
+                    <TableRow 
+                      key={food._id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onDoubleClick={() => openEdit(food)}
+                    >
                       <TableCell>
                         {food.image_url ? (
                           <img 
                             src={food.image_url} 
                             alt={food.name}
-                            className="w-12 h-12 rounded object-cover"
+                            className="w-20 h-20 rounded object-cover"
                           />
                         ) : (
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                          <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center">
                             <ImageIcon className="h-6 w-6 text-gray-500" />
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="font-medium">{food.name}</TableCell>
-                      <TableCell className="text-sm max-w-xs truncate">{food.description}</TableCell>
                       <TableCell>{formatPrice(food.price)} VND</TableCell>
                       <TableCell>{food.discount}%</TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            food.is_available
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {food.is_available ? "Có sẵn" : "Hết hàng"}
+                        </span>
+                      </TableCell>
                       <TableCell className="flex gap-2">
                         <Button
                           variant="outline"
@@ -328,7 +347,7 @@ export const OwnerPage = () => {
 
         {/* Dialog thêm/sửa món ăn */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className={isEditing ? "max-w-2xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
             <DialogHeader>
               <DialogTitle>{isEditing ? "Sửa món ăn" : "Thêm món ăn"}</DialogTitle>
               <DialogDescription>
@@ -336,8 +355,7 @@ export const OwnerPage = () => {
               </DialogDescription>
             </DialogHeader>
             <FormProvider {...form}>
-              <Form>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <Form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="name"
@@ -358,7 +376,7 @@ export const OwnerPage = () => {
                       <FormItem>
                         <FormLabel>Mô tả</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nhập mô tả" {...field} />
+                          <Textarea placeholder="Nhập mô tả" {...field} rows={3} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -394,6 +412,25 @@ export const OwnerPage = () => {
                   </div>
                   <FormField
                     control={form.control}
+                    name="is_available"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Có sẵn
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="image_url"
                     render={({ field }) => (
                       <FormItem>
@@ -405,6 +442,14 @@ export const OwnerPage = () => {
                       </FormItem>
                     )}
                   />
+                  {isEditing && (
+                    <div className="text-sm text-gray-500 space-y-1 pt-4 border-t">
+                      <p>Loại: {selectedFood?.category_id?.name || "FOOD"}</p>
+                      <p>Ngày tạo: {new Date(selectedFood?.created_at).toLocaleDateString("vi-VN")}</p>
+                      <p>Ngày cập nhật: {new Date(selectedFood?.updated_at).toLocaleDateString("vi-VN")}</p>
+                      <p>Tạo bởi: {selectedFood?.created_by}</p>
+                    </div>
+                  )}
                   <DialogFooter className="gap-2">
                     <Button
                       type="button"
@@ -421,8 +466,7 @@ export const OwnerPage = () => {
                       {isEditing ? "Cập nhật" : "Thêm"}
                     </Button>
                   </DialogFooter>
-                </form>
-              </Form>
+                </Form>
             </FormProvider>
           </DialogContent>
         </Dialog>

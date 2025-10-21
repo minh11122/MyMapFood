@@ -24,3 +24,9 @@ export const updateFood = (foodId, data) => {
 export const getFinanceByOwner = (ownerId) => {
   return api.get(`/owner/${ownerId}/finance`);
 };
+
+export const getRevenueByShop = (ownerId, month, year) => {
+  return api.get(`/owner/${ownerId}/revenue`, {
+    params: { month, year },
+  });
+}
