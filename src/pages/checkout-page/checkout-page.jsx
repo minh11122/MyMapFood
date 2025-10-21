@@ -618,7 +618,7 @@ export const CheckOutPage = () => {
                     <a href="#" className="text-orange-500 hover:underline">
                       Điều khoản sử dụng
                     </a>{" "}
-                    của YummyGo
+                    của MyMapFood
                   </p>
                 </div>
               </CardHeader>

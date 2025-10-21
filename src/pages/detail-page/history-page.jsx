@@ -23,7 +23,17 @@ export const HistoryPage = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await getOrders()
+        // 🔹 Lấy user từ localStorage (đã lưu khi đăng nhập)
+      const user = JSON.parse(localStorage.getItem("user"))
+      const userId = user?._id
+
+      if (!userId) {
+        console.error("❌ Không tìm thấy userId trong localStorage")
+        return
+      }
+
+      // 🔹 Gọi API có kèm userId
+      const res = await getOrders(userId)
         if (res.data.success) {
           setAllOrders(
             res.data.data.map((o) => ({
@@ -173,7 +183,7 @@ export const HistoryPage = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2 text-balance">Lịch sử đơn hàng</h1>
-          <p className="text-muted-foreground text-pretty">Theo dõi và quản lý các đơn hàng của bạn tại YummyGo</p>
+          <p className="text-muted-foreground text-pretty">Theo dõi và quản lý các đơn hàng của bạn tại MyMapFood</p>
         </div>
 
         {/* Tabs */}
@@ -231,7 +241,7 @@ export const HistoryPage = () => {
                             <img
                               src={order.shopImage}
                               alt={order.shopName}
-                              fill
+                              
                               className="object-cover"
                             />
                           ) : (
@@ -310,7 +320,7 @@ export const HistoryPage = () => {
                                 <img
                                   src={order.customerAvatar}
                                   alt={order.customerName}
-                                  fill
+                                  
                                   className="object-cover"
                                 />
                               ) : (
@@ -344,7 +354,7 @@ export const HistoryPage = () => {
                                 <img
                                   src={order.shopImage}
                                   alt={order.shopName}
-                                  fill
+                                  
                                   className="object-cover"
                                 />
                               ) : (
@@ -406,14 +416,14 @@ export const HistoryPage = () => {
                                   <img
                                     src={item.foodImage}
                                     alt={item.food?.name || "Món ăn"}
-                                    fill
+                                    
                                     className="object-cover"
                                   />
                                 ) : item.shopImage ? (
                                   <img
                                     src={item.shopImage}
                                     alt={item.food?.name || "Món ăn"}
-                                    fill
+                                    
                                     className="object-cover"
                                   />
                                 ) : (
