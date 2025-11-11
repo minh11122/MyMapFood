@@ -276,7 +276,7 @@ export const AccountManagement = () => {
                 <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
                 <TableHead className="font-semibold text-gray-700">Xác thực email</TableHead>
                 <TableHead className="font-semibold text-gray-700">Số điện thoại</TableHead>
-                <TableHead className="font-semibold text-gray-700">Created At</TableHead>
+                {/* <TableHead className="font-semibold text-gray-700">Created At</TableHead> */}
                 <TableHead className="font-semibold text-gray-700">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -305,9 +305,9 @@ export const AccountManagement = () => {
                     <TableCell>{getStatusBadge(account.status)}</TableCell>
                     <TableCell>{getVerifiedBadge(account.email_verified)}</TableCell>
                     <TableCell className="text-sm text-gray-500">{account.user?.phone || "N/A"}</TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       {new Date(account.createdAt).toLocaleDateString()}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       {account.status === "ACTIVE" && (
                         <Button

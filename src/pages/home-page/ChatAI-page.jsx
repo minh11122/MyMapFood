@@ -80,7 +80,7 @@ export const ChatAI = () => {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setOpen(!open)}
-          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:scale-110 transition-all rounded-full shadow-lg w-14 h-14 flex items-center justify-center"
+          className="bg-gradient-to-r from-Orange-500 to-Orange-600 hover:scale-110 transition-all rounded-full shadow-lg w-14 h-14 flex items-center justify-center"
         >
           {open ? (
             <X className="w-6 h-6 text-white" />
@@ -93,19 +93,19 @@ export const ChatAI = () => {
       {/* Hộp chat */}
       {open && (
         <div className="fixed bottom-24 right-6 w-96 bg-white shadow-2xl rounded-2xl border border-gray-200 z-50 flex flex-col overflow-hidden">
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-4 py-3 font-bold text-center">
+          <div className="bg-gradient-to-r from-Orange-500 to-Orange-600 text-white px-4 py-3 font-bold text-center">
             🍴 Chat với MyMapFoodAI 🤖
           </div>
 
           {/* Khung chat hiển thị markdown */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[420px] scrollbar-thin scrollbar-thumb-yellow-400">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[420px] scrollbar-thin scrollbar-thumb-Orange-400">
             {messages.map((msg, i) => (
               <div
                 key={i}
                 className={`p-3 rounded-2xl text-sm leading-relaxed max-w-[85%] ${
                   msg.from === "user"
-                    ? "bg-yellow-100 self-end ml-auto"
-                    : "bg-gray-100 self-start prose prose-sm prose-yellow"
+                    ? "bg-Orange-100 self-end ml-auto"
+                    : "bg-gray-100 self-start prose prose-sm prose-Orange"
                 }`}
               >
                 <ReactMarkdown>{msg.text}</ReactMarkdown>
@@ -128,7 +128,7 @@ export const ChatAI = () => {
                 key={i}
                 variant="outline"
                 size="sm"
-                className="text-xs border-yellow-400 hover:bg-yellow-100"
+                className="text-xs border-Orange-400 hover:bg-Orange-100"
                 onClick={() => handleSend(q)}
               >
                 {q}
@@ -147,7 +147,7 @@ export const ChatAI = () => {
             />
             <Button
               onClick={() => handleSend()}
-              className="bg-yellow-500 text-white hover:bg-yellow-600"
+              className="bg-Orange-500 text-white hover:bg-Orange-600"
             >
               Gửi
             </Button>

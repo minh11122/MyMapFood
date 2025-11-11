@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
 import Gemini_Generated_Image_lf325vlf325vlf32 from "../../assets/Gemini_Generated_Image_lf325vlf325vlf32.png";
 import { getShopsWithTopFood } from "../../services/shop.service";
+// Import các hàm API cho favorite (điều chỉnh đường dẫn nếu cần)
+import { getFavourites, addFavourite, removeFavourite } from "../../services/food.service"; // Giả sử file API được export từ đây
 
 const foodCategories = [
   { id: 1, name: "Đồ uống", slug: "do-uong", image: "/img-home/drinks.jpg", color: "from-blue-400 to-blue-600" },
@@ -16,17 +18,22 @@ export const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Lấy danh sách shop + món ăn top
+
+  const userId = localStorage.getItem('_id') || null; // Thay bằng logic thực tế để lấy userId
+
+  // Lấy danh sách shop + món ăn top và favorites
   useEffect(() => {
-    const fetchShops = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await getShopsWithTopFood();
-        if (res.data.success) {
-          const formattedData = res.data.data.map((shop) => {
+        // Fetch shops
+        const shopRes = await getShopsWithTopFood();
+        if (shopRes.data.success) {
+          const formattedData = shopRes.data.data.map((shop) => {
             const topFood = shop.topFood; // món đầu tiên của shop
             return {
               shopId: shop._id,
+              foodId: topFood?._id, // Thêm foodId để favorite món ăn top
               shopName: shop.name,
               image: shop.img,
               rating: topFood?.rating || 4.5,
@@ -36,21 +43,30 @@ export const HomePage = () => {
                 : "Chưa có địa chỉ",
               isPromo: topFood?.discount > 0,
               discount: topFood?.discount || 0,
-              category: topFood?.category || "Khác", // sửa ở đây
+              category: topFood?.category || "Khác",
               deliveryTime: "20-30 phút",
             };
           });
           setRestaurants(formattedData);
         }
+
+        // Fetch favorites của user (nếu có userId)
+        if (userId) {
+          const favRes = await getFavourites(userId);
+          if (favRes.data.success) {
+            // Giả sử response data là array [{userId, foodId}, ...]
+            setFavorites(favRes.data.data.map((fav) => fav.foodId));
+          }
+        }
       } catch (error) {
-        console.error("Lỗi khi lấy danh sách quán:", error);
+        console.error("Lỗi khi lấy dữ liệu:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchShops();
-  }, []);
+    fetchData();
+  }, [userId]); // Re-run nếu userId thay đổi
 
   const handleGetLocation = async () => {
     if (navigator.geolocation) {
@@ -82,10 +98,24 @@ export const HomePage = () => {
     } else alert("Trình duyệt không hỗ trợ định vị!");
   };
 
-  const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
-    );
+  // Toggle favorite: gọi API add/remove và update state local
+  const toggleFavorite = async (foodId) => {
+    if (!userId || !foodId) return; // Kiểm tra userId và foodId
+
+    try {
+      if (favorites.includes(foodId)) {
+        // Remove
+        await removeFavourite(userId, foodId);
+        setFavorites((prev) => prev.filter((fav) => fav !== foodId));
+      } else {
+        // Add
+        await addFavourite(userId, foodId);
+        setFavorites((prev) => [...prev, foodId]);
+      }
+    } catch (error) {
+      console.error("Lỗi khi toggle favorite:", error);
+      // Có thể thêm toast/alert thông báo lỗi cho user
+    }
   };
 
   return (
@@ -158,10 +188,13 @@ export const HomePage = () => {
                     </div>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(shop.shopId); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      toggleFavorite(shop.foodId); // Sử dụng foodId thay vì shopId
+                    }}
                     className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
                   >
-                    <Heart className={`w-4 h-4 ${favorites.includes(shop.shopId) ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
+                    <Heart className={`w-4 h-4 transition-colors ${favorites.includes(shop.foodId) ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
                   </button>
                 </div>
                 <div className="p-4">
